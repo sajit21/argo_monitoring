@@ -1,0 +1,68 @@
+# Helm values for kube-prometheus-stack (Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics).
+# Verify any key against: helm show values prometheus-community/kube-prometheus-stack --version <pinned>
+
+fullnameOverride: kube-prometheus-stack
+
+prometheus:
+  prometheusSpec:
+    retention: 15d                    # how long metrics are kept
+    # Pick up ServiceMonitors / PodMonitors / PrometheusRules from every namespace, not only this release.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 300m, memory: 1Gi }
+      limits: { memory: 2Gi }
+    # NO persistent storage yet: the cluster has no StorageClass. Metrics are lost if the pod restarts.
+    # When storage exists (e.g. Longhorn), uncomment, commit, and Argo CD applies it:
+    # retentionSize: 40GB
+    # storageSpec:
+    #   volumeClaimTemplate:
+    #     spec:
+    #       storageClassName: longhorn
+    #       accessModes: ["ReadWriteOnce"]
+    #       resources: { requests: { storage: 50Gi } }
+
+alertmanager:
+  alertmanagerSpec:
+    retention: 120h
+    resources:
+      requests: { cpu: 25m, memory: 64Mi }
+      limits: { memory: 256Mi }
+    # storage: same pattern as Prometheus above, once a StorageClass exists.
+  # Receivers (e-mail/webhook/Slack) need credentials and must not be committed in plain text.
+  # The chart's default config routes alerts nowhere until you add a receiver (a later step).
+
+grafana:
+  # No admin password here (it must not be in Git). The chart generates a random one in a Secret.
+  # Read it once with: kubectl -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' | base64 -d
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  # persistence: enable together with a StorageClass, otherwise dashboards you create are lost on restart.
+
+# RKE2 binds these control-plane metrics endpoints to localhost by default, so their targets would stay red.
+# Enable each after exposing metrics in /etc/rancher/rke2/config.yaml (see README, "Optional").
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 64Mi }
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }

@@ -1,0 +1,67 @@
+# ApplicationSet = a template that creates one Argo CD Application per list element below.
+# Today there is one element (kube-prometheus-stack). Later stages (loki, tempo...) are added as more elements.
+#
+# Each element decides: which chart, which version, where to deploy (cluster + namespace).
+# The template decides: how to sync (automation, prune, self-heal, retries, namespace creation).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: monitoring
+  namespace: argocd            # the namespace your Argo CD is installed in
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - name: kube-prometheus-stack
+            # SOURCE (Helm chart)
+            chartRepo: https://prometheus-community.github.io/helm-charts
+            chart: kube-prometheus-stack
+            # TEMPORARY "*" = newest. After the first sync, pin it (see README, step 5) and commit.
+            version: "*"
+            # TARGET (destination)
+            cluster: https://kubernetes.default.svc     # same cluster as Argo CD. For another cluster: its registered API URL
+            namespace: monitoring
+  template:
+    metadata:
+      name: "{{ .name }}"
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+    spec:
+      project: monitoring
+      sources:
+        # 1) the upstream Helm chart
+        - repoURL: "{{ .chartRepo }}"
+          chart: "{{ .chart }}"
+          targetRevision: "{{ .version }}"
+          helm:
+            releaseName: "{{ .name }}"
+            valueFiles:
+              - "$values/values/{{ .name }}.yaml"
+        # 2) this Git repo, only to read the values file above ($values)
+        - repoURL: __REPO_URL__
+          targetRevision: main
+          ref: values
+      destination:
+        server: "{{ .cluster }}"
+        namespace: "{{ .namespace }}"
+      syncPolicy:
+        automated:
+          prune: false          # Git removals do NOT silently delete live resources; review and prune deliberately
+          selfHeal: true        # manual changes in the cluster are reverted to match Git
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true   # required: kube-prometheus-stack CRDs are too large for normal apply
+        managedNamespaceMetadata:
+          labels:
+            # node-exporter needs hostPath/hostNetwork, so this namespace must allow "privileged" Pod Security.
+            pod-security.kubernetes.io/enforce: privileged
+            pod-security.kubernetes.io/warn: privileged
+            pod-security.kubernetes.io/audit: privileged
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 5m

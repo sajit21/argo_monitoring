@@ -1,0 +1,18 @@
+# AppProject: limits WHERE Argo CD may pull from and WHAT/WHERE it may deploy for the monitoring stack.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: monitoring
+  namespace: argocd            # the namespace your Argo CD is installed in
+spec:
+  description: Monitoring stack (kube-prometheus-stack)
+  sourceRepos:
+    - https://prometheus-community.github.io/helm-charts
+    - __REPO_URL__             # this Git repository
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+  # kube-prometheus-stack installs CRDs, ClusterRoles and the Namespace, which are cluster-scoped.
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
