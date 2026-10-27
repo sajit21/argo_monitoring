@@ -1,5 +1,5 @@
 # ApplicationSet = a template that creates one Argo CD Application per list element below.
-# Today there is one element (kube-prometheus-stack). Later stages (loki, tempo...) are added as more elements.
+# Elements: kube-prometheus-stack, loki, alloy, tempo
 #
 # Each element decides: which chart, which version, where to deploy (cluster + namespace).
 # The template decides: how to sync (automation, prune, self-heal, retries, namespace creation).
@@ -23,11 +23,29 @@ spec:
             # TARGET (destination)
             cluster: https://kubernetes.default.svc     # same cluster as Argo CD. For another cluster: its registered API URL
             namespace: monitoring
+          - name: loki
+            chartRepo: https://grafana.github.io/helm-charts
+            chart: loki
+            version: "*"
+            cluster: https://kubernetes.default.svc
+            namespace: monitoring
+          - name: alloy
+            chartRepo: https://grafana.github.io/helm-charts
+            chart: alloy
+            version: "*"
+            cluster: https://kubernetes.default.svc
+            namespace: monitoring
+          - name: tempo
+            chartRepo: https://grafana.github.io/helm-charts
+            chart: tempo
+            version: "*"
+            cluster: https://kubernetes.default.svc
+            namespace: monitoring
   template:
     metadata:
       name: "{{ .name }}"
       labels:
-        app.kubernetes.io/part-of: monitoring-stack
+        app.kubernetes.io/part-of: observability-stack
     spec:
       project: monitoring
       sources:
