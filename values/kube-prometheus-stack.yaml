@@ -1,3 +1,4 @@
+# AGENT_CONTEXT: chart=prometheus-community/kube-prometheus-stack ns=monitoring | retention=15d cross-ns SM/PM/PR enabled | no-pvc | grafana:additionalDataSources=[Loki(http://loki:3100),Tempo(http://tempo:3200)] tracesToLogsV2/tracesToMetrics/serviceMap/nodeGraph | rke2-cp disabled | resources set | no-admin-pw-in-git
 # Helm values for kube-prometheus-stack (Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics).
 # Verify any key against: helm show values prometheus-community/kube-prometheus-stack --version <pinned>
 

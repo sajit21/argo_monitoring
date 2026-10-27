@@ -1,0 +1,56 @@
+# values/tempo.yaml
+
+tempo:
+  storage:
+    trace:
+      backend: local
+
+      local:
+        path: /var/tempo/traces
+
+  receivers:
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+
+        grpc:
+          endpoint: 0.0.0.0:14250
+
+        thrift_binary:
+          endpoint: 0.0.0.0:6832
+
+        thrift_compact:
+          endpoint: 0.0.0.0:6831
+
+    zipkin:
+      endpoint: 0.0.0.0:9411
+
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+    opencensus:
+      endpoint: 0.0.0.0:55678
+
+# Disable persistent storage until a StorageClass is available.
+# Trace data may be lost when the pod is replaced.
+persistence:
+  enabled: false
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+# Disable optional Memcached component.
+memcached:
+  enabled: false

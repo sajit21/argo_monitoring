@@ -1,0 +1,113 @@
+alloy:
+  configMap:
+    create: true
+    content: |
+      // Discover pods
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // Relabel to get useful metadata
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+
+        rule {
+          source_labels = [
+            "__meta_kubernetes_namespace",
+            "__meta_kubernetes_pod_name"
+          ]
+          separator     = "/"
+          target_label  = "job"
+          replacement   = "$1/$2"
+        }
+
+        rule {
+          source_labels = [
+            "__meta_kubernetes_pod_uid",
+            "__meta_kubernetes_pod_container_name"
+          ]
+          target_label = "__path__"
+          separator    = "/"
+          replacement  = "/var/log/pods/*$1/*.log"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_id"]
+          target_label  = "container_runtime"
+          regex         = "^(\\S+):\\/\\/.+$"
+          replacement   = "$1"
+        }
+      }
+
+      // Collect logs
+      local.file_match "pod_logs" {
+        path_targets = discovery.relabel.pod_logs.output
+      }
+
+      // Read and forward container logs
+      loki.source.file "pod_logs" {
+        targets    = local.file_match.pod_logs.targets
+        forward_to = [loki.write.loki.receiver]
+      }
+
+      // Send logs to Loki
+      loki.write "loki" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
+      // Optional OTLP receiver to forward traces to Tempo
+      // otelcol.receiver.otlp "default" {
+      //   grpc {
+      //     endpoint = "0.0.0.0:4317"
+      //   }
+      //   http {
+      //     endpoint = "0.0.0.0:4318"
+      //   }
+      //   output {
+      //     traces = [otelcol.exporter.otlp.tempo.input]
+      //   }
+      // }
+
+      // otelcol.exporter.otlp "tempo" {
+      //   client {
+      //     endpoint = "tempo:4317"
+      //     tls {
+      //       insecure = true
+      //     }
+      //   }
+      // }
+
+controller:
+  type: daemonset
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+rbac:
+  create: true

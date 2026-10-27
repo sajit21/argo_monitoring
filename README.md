@@ -1,3 +1,4 @@
+<!-- AGENT_CONTEXT: repo_name=monitoring-gitops | purpose=Argo CD GitOps repo for observability stack (kube-prometheus-stack,loki,alloy,tempo) | stack=helm+argocd | pattern=direct-upstream-charts+multi-source($values)+ApplicationSet-list | apps=kube-prometheus-stack,loki,alloy,tempo | ns=monitoring argocd_ns=argocd | sync=auto,selfHeal=true,prune=false,CreateNamespace,ServerSideApply | psa=privileged-on-monitoring | repo=https://github.com/sajit21/argo_monitoring.git | values=all-4-present(loki/alloy/tempo-minimal) | versions=* (pin-after-sync) | no-Chart.yaml/templates/helpers | storage=ephemeral(no-pvc) | grafana-ds=Loki/Tempo-wired | notes=node-exporter-privileged,SSApply-for-CRDs -->
 # monitoring-gitops
 
 Everything needed to deploy **kube-prometheus-stack** (Prometheus, Alertmanager, Grafana, node-exporter,

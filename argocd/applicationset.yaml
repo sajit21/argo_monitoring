@@ -1,3 +1,4 @@
+# AGENT_CONTEXT: kind=ApplicationSet apiGroup=argoproj.io/v1alpha1 name=monitoring ns=argocd | goTemplate=true missingkey=error | list:[kube-prometheus-stack(pc),loki(grafana),alloy(grafana),tempo(grafana)] | multi-src:(1)chart+targetRev=*+valueFiles=$values/values/{{.name}}.yaml (2)git(main,ref=values) | dest=in-cluster/ns=monitoring project=monitoring | sync=auto+selfHeal=true prune=false CreateNS ServerSideApply | psa-managed-ns(privileged) | label=app.kubernetes.io/part-of:observability-stack
 # ApplicationSet = a template that creates one Argo CD Application per list element below.
 # Elements: kube-prometheus-stack, loki, alloy, tempo
 #
@@ -48,7 +49,7 @@ spec:
         app.kubernetes.io/part-of: observability-stack
     spec:
       project: monitoring
-      sources:
+      sources:  
         # 1) the upstream Helm chart
         - repoURL: "{{ .chartRepo }}"
           chart: "{{ .chart }}"
@@ -58,7 +59,7 @@ spec:
             valueFiles:
               - "$values/values/{{ .name }}.yaml"
         # 2) this Git repo, only to read the values file above ($values)
-        - repoURL: __REPO_URL__
+        - repoURL: https://github.com/sajit21/argo_monitoring.git
           targetRevision: main
           ref: values
       destination:
