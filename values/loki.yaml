@@ -4,6 +4,11 @@
 deploymentMode: SingleBinary
 
 loki:
+  podSecurityContext:
+    runAsUser: 2000
+    runAsGroup: 2000
+    runAsNonRoot: true
+    fsGroup: 2000
   auth_enabled: false
 
   commonConfig:

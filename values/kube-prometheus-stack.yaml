@@ -61,6 +61,7 @@ grafana:
 
   initChownData:
     enabled: false
+    
   persistence:
     enabled: true
     storageClassName: nfs-csi
