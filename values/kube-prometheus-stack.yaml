@@ -113,6 +113,9 @@ grafana:
 kubeEtcd:
   enabled: false
 
+coreDns:
+  enabled: false
+
 kubeControllerManager:
   enabled: false
 
