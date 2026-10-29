@@ -1,3 +1,4 @@
+
 # values/loki.yaml
 
 deploymentMode: SingleBinary
@@ -21,30 +22,33 @@ loki:
           prefix: loki_index_
           period: 24h
 
+  limits_config:
+    retention_period: 168h  # 7 days
+
   compactor:
     working_directory: /var/loki/compactor
-    retention_enabled: false
-
-    # Enable retention only after configuring an appropriate
-    # retention policy and verifying the storage configuration.
+    retention_enabled: true
+    delete_request_store: filesystem
 
 singleBinary:
   replicas: 1
 
   persistence:
-    enabled: false
-
-    # Uses ephemeral storage when no persistent volume is configured.
-    # Logs may be lost when the pod is replaced.
+    enabled: true
+    storageClass: nfs-csi
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
 
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
     limits:
-      memory: 512Mi
+      cpu: 500m
+      memory: 1Gi
 
-# Disable components not needed for SingleBinary mode.
+# Disable components not needed in SingleBinary mode.
 read:
   replicas: 0
 
@@ -60,7 +64,6 @@ gateway:
 monitoring:
   selfMonitoring:
     enabled: false
-
     grafanaAgent:
       installOperator: false
 

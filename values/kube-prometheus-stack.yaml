@@ -1,69 +1,150 @@
-# AGENT_CONTEXT: chart=prometheus-community/kube-prometheus-stack ns=monitoring | retention=15d cross-ns SM/PM/PR enabled | no-pvc | grafana:additionalDataSources=[Loki(http://loki:3100),Tempo(http://tempo:3200)] tracesToLogsV2/tracesToMetrics/serviceMap/nodeGraph | rke2-cp disabled | resources set | no-admin-pw-in-git
-# Helm values for kube-prometheus-stack (Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics).
-# Verify any key against: helm show values prometheus-community/kube-prometheus-stack --version <pinned>
+
+# Helm values for kube-prometheus-stack
+# Verify keys against your pinned chart version.
 
 fullnameOverride: kube-prometheus-stack
 
 prometheus:
   prometheusSpec:
-    retention: 15d                    # how long metrics are kept
-    # Pick up ServiceMonitors / PodMonitors / PrometheusRules from every namespace, not only this release.
+    retention: 15d
+    retentionSize: 18GB
+
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: nfs-csi
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+
     resources:
-      requests: { cpu: 300m, memory: 1Gi }
-      limits: { memory: 2Gi }
-    # NO persistent storage yet: the cluster has no StorageClass. Metrics are lost if the pod restarts.
-    # When storage exists (e.g. Longhorn), uncomment, commit, and Argo CD applies it:
-    # retentionSize: 40GB
-    # storageSpec:
-    #   volumeClaimTemplate:
-    #     spec:
-    #       storageClassName: longhorn
-    #       accessModes: ["ReadWriteOnce"]
-    #       resources: { requests: { storage: 50Gi } }
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
 
 alertmanager:
   alertmanagerSpec:
     retention: 120h
+
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: nfs-csi
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+
     resources:
-      requests: { cpu: 25m, memory: 64Mi }
-      limits: { memory: 256Mi }
-    # storage: same pattern as Prometheus above, once a StorageClass exists.
-  # Receivers (e-mail/webhook/Slack) need credentials and must not be committed in plain text.
-  # The chart's default config routes alerts nowhere until you add a receiver (a later step).
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
 
 grafana:
-  # No admin password here (it must not be in Git). The chart generates a random one in a Secret.
-  # Read it once with: kubectl -n monitoring get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' | base64 -d
-  resources:
-    requests: { cpu: 100m, memory: 128Mi }
-    limits: { memory: 512Mi }
-  # persistence: enable together with a StorageClass, otherwise dashboards you create are lost on restart.
+  persistence:
+    enabled: true
+    storageClassName: nfs-csi
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
 
-# RKE2 binds these control-plane metrics endpoints to localhost by default, so their targets would stay red.
-# Enable each after exposing metrics in /etc/rancher/rke2/config.yaml (see README, "Optional").
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Do not store admin credentials in Git.
+  # Retrieve the generated password from the Grafana Secret.
+
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      version: 1
+      editable: true
+
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring.svc.cluster.local:3200
+      version: 1
+      editable: true
+      jsonData:
+        httpMethod: GET
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: "-1h"
+          spanEndTimeShift: "1h"
+          tags:
+            - job
+            - instance
+            - pod
+            - namespace
+          filterByTraceID: false
+          filterBySpanID: false
+        tracesToMetrics:
+          datasourceUid: prometheus
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true
+
+# RKE2 control-plane metrics endpoints are often bound to localhost.
+# Enable only after configuring their metrics endpoints.
 kubeEtcd:
   enabled: false
+
 kubeControllerManager:
   enabled: false
+
 kubeScheduler:
   enabled: false
+
 kubeProxy:
   enabled: false
 
 kube-state-metrics:
   resources:
-    requests: { cpu: 25m, memory: 64Mi }
-    limits: { memory: 256Mi }
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 prometheus-node-exporter:
   resources:
-    requests: { cpu: 25m, memory: 32Mi }
-    limits: { memory: 64Mi }
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 64Mi
 
 prometheusOperator:
   resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits: { memory: 256Mi }
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
