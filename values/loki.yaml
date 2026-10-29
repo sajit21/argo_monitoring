@@ -1,6 +1,3 @@
-
-# values/loki.yaml
-
 deploymentMode: SingleBinary
 
 loki:
@@ -9,6 +6,10 @@ loki:
     runAsGroup: 2000
     runAsNonRoot: true
     fsGroup: 2000
+
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+
   auth_enabled: false
 
   commonConfig:
@@ -28,7 +29,7 @@ loki:
           period: 24h
 
   limits_config:
-    retention_period: 168h  # 7 days
+    retention_period: 168h
 
   compactor:
     working_directory: /var/loki/compactor
@@ -37,7 +38,6 @@ loki:
 
 singleBinary:
   replicas: 1
-
   persistence:
     enabled: true
     storageClass: nfs-csi
@@ -45,31 +45,21 @@ singleBinary:
       - ReadWriteOnce
     size: 20Gi
 
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 1Gi
-
-# Disable components not needed in SingleBinary mode.
 read:
   replicas: 0
-
 write:
   replicas: 0
-
 backend:
   replicas: 0
 
 chunksCache:
   enabled: false
-
 resultsCache:
   enabled: false
-
 gateway:
+  enabled: false
+
+lokiCanary:
   enabled: false
 
 monitoring:
@@ -77,9 +67,6 @@ monitoring:
     enabled: false
     grafanaAgent:
       installOperator: false
-
-  lokiCanary:
-    enabled: false
 
 test:
   enabled: false
