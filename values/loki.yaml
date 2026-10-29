@@ -8,7 +8,7 @@ loki:
     fsGroup: 2000
 
   containerSecurityContext:
-    readOnlyRootFilesystem: true
+    readOnlyRootFilesystem: true  ##Loki
 
   auth_enabled: false
 
